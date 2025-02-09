@@ -59,8 +59,10 @@ func (f *FieldElement) Multiply(other *FieldElement) *FieldElement {
 }
 
 func (f *FieldElement) Power(pwr *big.Int) *FieldElement {
-	exp := big.NewInt(0).Mod(pwr, big.NewInt(0).Sub(f.order, big.NewInt(1)))
-	return NewFieldElement(f.order, big.NewInt(0).Mod(big.NewInt(0).Exp(f.num, exp, nil), f.order))
+	t := big.NewInt(0).Mod(pwr, big.NewInt(0).Sub(f.order, big.NewInt(1)))
+	res := big.NewInt(0).Exp(f.num, t, f.order)
+	modRes := big.NewInt(0).Mod(res, f.order)
+	return NewFieldElement(f.order, modRes)
 }
 
 func (f *FieldElement) ScalarMul(v *big.Int) *FieldElement {
@@ -76,4 +78,12 @@ func (f *FieldElement) Divide(other *FieldElement) *FieldElement {
 	// a / b == a * b ^ (p - 2)
 	reverseOfOther := other.Power(big.NewInt(0).Sub(f.order, big.NewInt(2)))
 	return f.Multiply(reverseOfOther)
+}
+
+func (f *FieldElement) Inverse() *FieldElement {
+	return f.Power(big.NewInt(0).Sub(f.order, big.NewInt(2)))
+}
+
+func S256Field(num *big.Int) *FieldElement {
+	return NewFieldElement(BitcoinOrder, num)
 }
