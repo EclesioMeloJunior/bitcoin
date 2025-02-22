@@ -74,3 +74,21 @@ func TestFinitSetOf19thOrderToThePwrOfOrderMinusOne(t *testing.T) {
 		fmt.Println("#", idx, e.String())
 	}
 }
+
+func TestSqrt(t *testing.T) {
+	x := new(big.Int)
+	x.SetString("49fc4e631e3624a545de3f89f5d8684c7b8138bd94bdd531d2e213bf016b278a", 16)
+	//y^2 = x^3 + 7
+	y2 := (ecc.S256Field(x).Power(big.NewInt(int64(3)))).Add(ecc.S256Field(big.NewInt(int64(7))))
+	y := y2.Sqrt()
+
+	fmt.Printf("y value for gien x is %s\n", y)
+
+	//check x,y on the curve
+	p := ecc.NewPoint(ecc.S256Field(x), y, ecc.S256Field(big.NewInt(int64(0))),
+		ecc.S256Field(big.NewInt(int64(7))))
+
+	require.NotNil(t, p)
+
+	fmt.Println("point from the SEC compressed format is on the curve")
+}

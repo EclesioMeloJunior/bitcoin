@@ -1,6 +1,7 @@
 package ecc_test
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"ecc"
 	"fmt"
@@ -183,4 +184,27 @@ func TestPrivateKeySig(t *testing.T) {
 	anotherPrivate := ecc.NewPrivateKey(big.NewInt(4444))
 	anotherPublic := anotherPrivate.PublicKey()
 	require.False(t, anotherPublic.Verify(zField, sig))
+}
+
+func TestPointFromSec(t *testing.T) {
+	p := new(big.Int)
+	p.SetString("deadbeef54321", 16)
+	privateKey := ecc.NewPrivateKey(p)
+	pubKey := privateKey.PublicKey()
+
+	secUncompressed := big.NewInt(0)
+	secUncompressed.SetString(pubKey.Sec(false), 16)
+
+	secBinCompressed := new(big.Int)
+	secBinCompressed.SetString(pubKey.Sec(true), 16)
+
+	require.NotEqual(t, secBinCompressed.Bytes(), secUncompressed.Bytes())
+
+	p1, err := ecc.FromSec(bytes.NewReader(secUncompressed.Bytes()))
+	require.NoError(t, err)
+
+	sameP1, err := ecc.FromSec(bytes.NewReader(secBinCompressed.Bytes()))
+	require.NoError(t, err)
+
+	require.True(t, p1.EqualTo(sameP1))
 }

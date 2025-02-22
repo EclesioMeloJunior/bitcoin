@@ -2,6 +2,7 @@ package ecc
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 )
 
@@ -211,4 +212,90 @@ func S256Point(x, y *big.Int) *Point {
 	}
 
 	return NewPoint(S256Field(x), S256Field(y), a, b)
+}
+
+func FromSec(input io.Reader) (*Point, error) {
+	fst := make([]byte, 1)
+	_, err := input.Read(fst)
+	if err != nil {
+		return nil, err
+	}
+
+	switch {
+	case fst[0] == 0x04:
+		return fromUncompressedSec(input)
+	case fst[0] == 0x03:
+		return fromOddCompressed(input)
+	case fst[0] == 0x02:
+		return fromEvenCompressed(input)
+	default:
+		return nil, fmt.Errorf("invalid format")
+	}
+}
+
+func fromUncompressedSec(input io.Reader) (*Point, error) {
+	x := make([]byte, 32)
+	y := make([]byte, 32)
+
+	_, err := input.Read(x)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = input.Read(y)
+	if err != nil {
+		return nil, err
+	}
+
+	return S256Point(big.NewInt(0).SetBytes(x), big.NewInt(0).SetBytes(y)), nil
+}
+
+func fromEvenCompressed(input io.Reader) (*Point, error) {
+	x := make([]byte, 32)
+	_, err := input.Read(x)
+	if err != nil {
+		return nil, err
+	}
+
+	xInt := big.NewInt(0).SetBytes(x)
+	ySq := S256Field(xInt).Power(big.NewInt(3)).Add(S256Field(big.NewInt(7)))
+	y := ySq.Sqrt()
+
+	if big.NewInt(0).Mod(y.num, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {
+		return S256Point(big.NewInt(0).SetBytes(x), y.num), nil
+	}
+
+	return S256Point(big.NewInt(0).SetBytes(x), y.Negate().num), nil
+}
+
+func fromOddCompressed(input io.Reader) (*Point, error) {
+	x := make([]byte, 32)
+	_, err := input.Read(x)
+	if err != nil {
+		return nil, err
+	}
+
+	xInt := big.NewInt(0).SetBytes(x)
+	ySq := S256Field(xInt).Power(big.NewInt(3)).Add(S256Field(big.NewInt(7)))
+	y := ySq.Sqrt()
+
+	if big.NewInt(0).Mod(y.num, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {
+		return S256Point(big.NewInt(0).SetBytes(x), y.Negate().num), nil
+	}
+
+	return S256Point(big.NewInt(0).SetBytes(x), y.num), nil
+}
+
+func (p *Point) Sec(compressed bool) string {
+	if !compressed {
+		return fmt.Sprintf("04%064x%064x", p.x.num, p.y.num)
+	}
+
+	even := big.NewInt(0).Mod(p.y.num, big.NewInt(2)).Cmp(big.NewInt(0)) == 0
+
+	if even {
+		return fmt.Sprintf("02%064x", p.x.num)
+	} else {
+		return fmt.Sprintf("03%064x", p.x.num)
+	}
 }

@@ -69,6 +69,18 @@ func (f *FieldElement) ScalarMul(v *big.Int) *FieldElement {
 	return NewFieldElement(f.order, big.NewInt(0).Mod(big.NewInt(0).Mul(f.num, v), f.order))
 }
 
+func (f *FieldElement) Sqrt() *FieldElement {
+	// ensure that (p + 1) % 4 == 0
+	nextP := big.NewInt(0).Add(f.order, big.NewInt(1))
+	mod := big.NewInt(0).Mod(nextP, big.NewInt(4))
+	if mod.Cmp(big.NewInt(0)) != 0 {
+		panic("order + 1  % 4 is not zero")
+	}
+
+	div := big.NewInt(0).Div(nextP, big.NewInt(4))
+	return f.Power(div)
+}
+
 func (f *FieldElement) Divide(other *FieldElement) *FieldElement {
 	f.checkOrder(other)
 
